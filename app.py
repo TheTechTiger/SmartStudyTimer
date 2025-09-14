@@ -410,11 +410,13 @@ def callback():
 def dashboard():
     return render_template('dashboard.html')
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
     logout_user()
     session.clear()  # Clear all session data
+    if request.method == 'POST':
+        return jsonify({'success': True})
     return redirect(url_for('index'))
 
 @app.route('/api/start-session', methods=['POST'])
@@ -478,24 +480,65 @@ def end_session():
 @app.route('/api/achievements')
 @login_required
 def get_achievements():
+    # Define the achievements and their corresponding images
+    achievement_data = [
+        {
+            'name': 'Focus Master',
+            'description': 'Complete 10 focus sessions without breaks',
+            'points_required': 500,
+            'badge_image': 'imgs/FocusMaster.png'
+        },
+        {
+            'name': 'Deep Thinker',
+            'description': 'Complete 5 deep work sessions',
+            'points_required': 1000,
+            'badge_image': 'imgs/DeepThinker.png'
+        },
+        {
+            'name': 'Early Bird',
+            'description': 'Complete 3 study sessions before 9 AM',
+            'points_required': 300,
+            'badge_image': 'imgs/EarlyBird.png'
+        },
+        {
+            'name': 'Night Owl',
+            'description': 'Complete 3 study sessions after 10 PM',
+            'points_required': 300,
+            'badge_image': 'imgs/NightOwl.png'
+        },
+        {
+            'name': 'Study Streak',
+            'description': 'Complete study sessions 5 days in a row',
+            'points_required': 750,
+            'badge_image': 'imgs/StudyStreak.png'
+        }
+    ]
+
+    # Get user's earned achievements
     conn = sqlite3.connect(get_db_path())
     c = conn.cursor()
     c.execute('''
-        SELECT a.*, CASE WHEN ua.user_id IS NOT NULL THEN 1 ELSE 0 END as earned
-        FROM achievements a
-        LEFT JOIN user_achievements ua ON a.id = ua.achievement_id AND ua.user_id = ?
+        SELECT a.name 
+        FROM achievements a 
+        JOIN user_achievements ua ON a.id = ua.achievement_id 
+        WHERE ua.user_id = ?
     ''', (current_user.id,))
-    achievements = c.fetchall()
+    earned_achievements = {row[0] for row in c.fetchall()}
     conn.close()
 
-    return jsonify([{
-        'id': a[0],
-        'name': a[1],
-        'description': a[2],
-        'points_required': a[3],
-        'badge_image': a[4],
-        'earned': bool(a[5])
-    } for a in achievements])
+    # Format achievements for response
+    formatted_achievements = []
+    for i, achievement in enumerate(achievement_data, 1):
+        formatted_achievements.append({
+            'id': i,
+            'name': achievement['name'],
+            'description': achievement['description'],
+            'points_required': achievement['points_required'],
+            'badge_image': achievement['badge_image'],
+            'earned': achievement['name'] in earned_achievements
+        })
+
+    return jsonify(formatted_achievements)
 
 @app.route('/api/study-groups', methods=['GET', 'POST'])
 @login_required
@@ -526,12 +569,19 @@ def study_groups():
     else:
         conn = sqlite3.connect(get_db_path())
         c = conn.cursor()
+        
+        # Get all groups with member count and whether current user is a member
         c.execute('''
-            SELECT sg.*, COUNT(gm.user_id) as member_count
+            SELECT 
+                sg.*,
+                COUNT(DISTINCT gm.user_id) as member_count,
+                MAX(CASE WHEN gm2.user_id = ? THEN 1 ELSE 0 END) as is_member
             FROM study_groups sg
             LEFT JOIN group_members gm ON sg.id = gm.group_id
+            LEFT JOIN group_members gm2 ON sg.id = gm2.group_id AND gm2.user_id = ?
             GROUP BY sg.id
-        ''')
+        ''', (current_user.id, current_user.id))
+        
         groups = c.fetchall()
         conn.close()
 
@@ -540,8 +590,56 @@ def study_groups():
             'name': g[1],
             'created_by': g[2],
             'created_at': g[3],
-            'member_count': g[4]
+            'member_count': g[4],
+            'is_member': bool(g[5])
         } for g in groups])
+
+@app.route('/api/study-groups/<int:group_id>/join', methods=['POST'])
+@login_required
+def join_study_group(group_id):
+    conn = sqlite3.connect(get_db_path())
+    c = conn.cursor()
+    
+    # Check if user is already a member
+    c.execute('''
+        SELECT 1 FROM group_members 
+        WHERE group_id = ? AND user_id = ?
+    ''', (group_id, current_user.id))
+    
+    if c.fetchone():
+        conn.close()
+        return jsonify({
+            'success': False,
+            'message': 'You are already a member of this group'
+        }), 400
+    
+    # Join the group
+    try:
+        c.execute('''
+            INSERT INTO group_members (group_id, user_id, joined_at)
+            VALUES (?, ?, ?)
+        ''', (group_id, current_user.id, datetime.now()))
+        conn.commit()
+        
+        # Get updated member count
+        c.execute('''
+            SELECT COUNT(*) FROM group_members WHERE group_id = ?
+        ''', (group_id,))
+        member_count = c.fetchone()[0]
+        
+        conn.close()
+        return jsonify({
+            'success': True,
+            'message': 'Successfully joined the group',
+            'member_count': member_count
+        })
+        
+    except sqlite3.Error as e:
+        conn.close()
+        return jsonify({
+            'success': False,
+            'message': 'Failed to join group'
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

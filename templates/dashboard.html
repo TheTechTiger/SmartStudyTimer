@@ -37,7 +37,7 @@
                 <p class="text-gray-600">Points: {{ current_user.points }}</p>
             </div>
         </div>
-        <button onclick="if(confirm('Are you sure you want to logout?')) window.location.href='/logout'" 
+        <button onclick="logout()" 
                 class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
             Logout
         </button>
@@ -166,6 +166,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<!-- Any additional page-specific scripts can go here -->
 <script>
     let currentSession = null;
     let timerInterval = null;
@@ -328,7 +330,7 @@
         const container = document.getElementById('achievements');
         container.innerHTML = achievements.map(achievement => `
             <div class="bg-gray-50 p-4 rounded-lg ${achievement.earned ? 'border-2 border-green-500' : ''}">
-                <img src="/static/images/${achievement.badge_image}" alt="${achievement.name}" class="w-12 h-12 mb-2">
+                <img src="/static/${achievement.badge_image}" alt="${achievement.name}" class="w-12 h-12 mb-2">
                 <h3 class="font-semibold">${achievement.name}</h3>
                 <p class="text-sm text-gray-600">${achievement.description}</p>
             </div>
@@ -344,11 +346,52 @@
             <div class="bg-gray-50 p-4 rounded-lg">
                 <h3 class="font-semibold">${group.name}</h3>
                 <p class="text-sm text-gray-600">${group.member_count} members</p>
-                <button class="mt-2 bg-indigo-100 text-indigo-600 px-3 py-1 rounded text-sm">
-                    Join Group
-                </button>
+                ${group.is_member ? 
+                    `<button class="mt-2 bg-green-100 text-green-600 px-3 py-1 rounded text-sm" disabled>
+                        Member
+                    </button>` :
+                    `<button onclick="joinGroup(${group.id}, this)" 
+                        class="mt-2 bg-indigo-100 text-indigo-600 px-3 py-1 rounded text-sm hover:bg-indigo-200">
+                        Join Group
+                    </button>`
+                }
             </div>
         `).join('');
+    }
+
+    // Join study group
+    async function joinGroup(groupId, buttonElement) {
+        try {
+            const response = await fetch(`/api/study-groups/${groupId}/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update button to show membership
+                const groupDiv = buttonElement.closest('.bg-gray-50');
+                buttonElement.outerHTML = `
+                    <button class="mt-2 bg-green-100 text-green-600 px-3 py-1 rounded text-sm" disabled>
+                        Member
+                    </button>
+                `;
+                
+                // Update member count
+                const memberCountElem = groupDiv.querySelector('p');
+                memberCountElem.textContent = `${data.member_count} members`;
+                
+                showNotification('Successfully joined the group!');
+            } else {
+                showNotification(data.message || 'Failed to join group');
+            }
+        } catch (error) {
+            showNotification('Error joining group');
+            console.error('Error:', error);
+        }
     }
 
     // Create study group

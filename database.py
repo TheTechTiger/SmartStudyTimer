@@ -108,11 +108,11 @@ def init_db():
 
     # Insert default achievements
     default_achievements = [
-        ('Early Bird', 'Complete 5 study sessions before 10 AM', 100, 'early_bird.png'),
-        ('Night Owl', 'Complete 5 study sessions after 8 PM', 100, 'night_owl.png'),
-        ('Focus Master', 'Complete 10 Focus Mode sessions', 200, 'focus_master.png'),
-        ('Deep Thinker', 'Complete 10 Deep Work Mode sessions', 300, 'deep_thinker.png'),
-        ('Study Streak', 'Study for 7 consecutive days', 500, 'study_streak.png')
+        ('Focus Master', 'Complete 10 focus sessions without breaks', 500, 'imgs/FocusMaster.png'),
+        ('Deep Thinker', 'Complete 5 deep work sessions', 1000, 'imgs/DeepThinker.png'),
+        ('Early Bird', 'Complete 3 study sessions before 9 AM', 300, 'imgs/EarlyBird.png'),
+        ('Night Owl', 'Complete 3 study sessions after 10 PM', 300, 'imgs/NightOwl.png'),
+        ('Study Streak', 'Complete study sessions 5 days in a row', 750, 'imgs/StudyStreak.png')
     ]
 
     c.executemany('''
