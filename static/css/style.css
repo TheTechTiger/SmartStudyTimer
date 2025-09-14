@@ -1,0 +1,71 @@
+/* Custom styles */
+.mode-btn {
+    transition: all 0.3s ease;
+}
+
+.mode-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Animation for timer */
+#timer {
+    transition: color 0.3s ease;
+}
+
+#timer.break {
+    color: #4CAF50;
+}
+
+#timer.study {
+    color: #3730A3;
+}
+
+/* Achievements animation */
+.achievement {
+    transition: all 0.3s ease;
+}
+
+.achievement:hover {
+    transform: scale(1.05);
+}
+
+/* Notification animations */
+.notification {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Progress bar animation */
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Study group card hover effects */
+.study-group-card {
+    transition: all 0.3s ease;
+}
+
+.study-group-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom button hover effects */
+.custom-btn {
+    transition: all 0.3s ease;
+}
+
+.custom-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

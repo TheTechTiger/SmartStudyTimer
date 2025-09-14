@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        max-width: 300px;
+        z-index: 1000;
+        transform: translateX(120%);
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .notification.show {
+        transform: translateX(0);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Timer Section -->
+    <div class="col-span-2">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-4">Study Timer</h2>
+            
+            <!-- Timer Display -->
+            <div class="text-center mb-8">
+                <div class="text-6xl font-mono mb-4" id="timer">25:00</div>
+                <div class="text-lg text-gray-600" id="status">Ready to start</div>
+            </div>
+
+            <!-- Mode Selection -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <button class="mode-btn bg-indigo-600 text-white px-4 py-2 rounded" data-mode="focus">
+                    Focus Mode
+                </button>
+                <button class="mode-btn bg-indigo-100 text-indigo-600 px-4 py-2 rounded" data-mode="deep">
+                    Deep Work
+                </button>
+                <button class="mode-btn bg-indigo-100 text-indigo-600 px-4 py-2 rounded" data-mode="custom">
+                    Custom
+                </button>
+            </div>
+
+            <!-- Custom Timer Settings (initially hidden) -->
+            <div id="customSettings" class="hidden mb-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Study Duration (minutes)</label>
+                        <input type="number" id="customStudyDuration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value="25">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Break Duration (minutes)</label>
+                        <input type="number" id="customBreakDuration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value="5">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="flex justify-center gap-4">
+                <button id="startBtn" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                    Start
+                </button>
+                <button id="pauseBtn" class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 hidden">
+                    Pause
+                </button>
+                <button id="resumeBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 hidden">
+                    Resume
+                </button>
+                <button id="resetBtn" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats and Achievements -->
+    <div>
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-2xl font-bold mb-4">Your Stats</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-gray-600">Total Points</p>
+                    <p class="text-2xl font-bold">{{ current_user.points }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Study Time</p>
+                    <p class="text-2xl font-bold">{{ (current_user.total_study_time / 60)|round|int }}h</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-4">Achievements</h2>
+            <div id="achievements" class="grid grid-cols-2 gap-4">
+                <!-- Achievements will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Study Groups Section -->
+<div class="mt-6">
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">Study Groups</h2>
+            <button id="createGroupBtn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                Create Group
+            </button>
+        </div>
+        <div id="studyGroups" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Study groups will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Notification -->
+<div id="notification" class="notification bg-white p-4 rounded-lg shadow-lg border-l-4 border-indigo-600">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+        </div>
+        <div class="ml-3">
+            <p id="notificationText" class="text-sm text-gray-700"></p>
+        </div>
+        <div class="ml-auto pl-3">
+            <button id="dismissNotification" class="text-gray-400 hover:text-gray-500">
+                <span class="sr-only">Dismiss</span>
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentSession = null;
+    let timerInterval = null;
+    let timeLeft = 0;
+    let isBreak = false;
+    let currentMode = 'focus';
+    let isPaused = false;
+
+    const modes = {
+        focus: { study: 25, break: 5 },
+        deep: { study: 50, break: 10 },
+        custom: { study: 25, break: 5 }
+    };
+
+    function updateTimer(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        document.getElementById('timer').textContent = 
+            `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    function showNotification(message) {
+        const notification = document.getElementById('notification');
+        document.getElementById('notificationText').textContent = message;
+        notification.classList.add('show');
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, 5000);
+    }
+
+    async function startSession() {
+        const mode = currentMode;
+        const duration = isBreak ? 
+            modes[mode].break * 60 : 
+            modes[mode].study * 60;
+
+        const response = await fetch('/api/start-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode, duration })
+        });
+        const data = await response.json();
+        currentSession = data.session_id;
+        return duration;
+    }
+
+    async function endSession() {
+        if (currentSession) {
+            const response = await fetch('/api/end-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    session_id: currentSession,
+                    duration: modes[currentMode].study * 60
+                })
+            });
+            const data = await response.json();
+            showNotification(data.study_tip);
+            
+            // Play the TTS audio
+            const audio = new Audio('/static/audio/notification.mp3');
+            audio.play();
+        }
+    }
+
+    document.getElementById('startBtn').addEventListener('click', async () => {
+        timeLeft = await startSession();
+        updateTimer(timeLeft);
+        
+        timerInterval = setInterval(() => {
+            if (!isPaused) {
+                timeLeft--;
+                updateTimer(timeLeft);
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    if (isBreak) {
+                        showNotification("Break's over! Time to study!");
+                        isBreak = false;
+                    } else {
+                        endSession();
+                        showNotification("Great job! Time for a break!");
+                        isBreak = true;
+                    }
+                    timeLeft = isBreak ? 
+                        modes[currentMode].break * 60 : 
+                        modes[currentMode].study * 60;
+                    startSession();
+                }
+            }
+        }, 1000);
+
+        document.getElementById('startBtn').classList.add('hidden');
+        document.getElementById('pauseBtn').classList.remove('hidden');
+    });
+
+    document.getElementById('pauseBtn').addEventListener('click', () => {
+        isPaused = true;
+        document.getElementById('pauseBtn').classList.add('hidden');
+        document.getElementById('resumeBtn').classList.remove('hidden');
+    });
+
+    document.getElementById('resumeBtn').addEventListener('click', () => {
+        isPaused = false;
+        document.getElementById('resumeBtn').classList.add('hidden');
+        document.getElementById('pauseBtn').classList.remove('hidden');
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        clearInterval(timerInterval);
+        isPaused = false;
+        isBreak = false;
+        timeLeft = modes[currentMode].study * 60;
+        updateTimer(timeLeft);
+        document.getElementById('startBtn').classList.remove('hidden');
+        document.getElementById('pauseBtn').classList.add('hidden');
+        document.getElementById('resumeBtn').classList.add('hidden');
+    });
+
+    // Mode selection
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.mode-btn').forEach(b => {
+                b.classList.remove('bg-indigo-600', 'text-white');
+                b.classList.add('bg-indigo-100', 'text-indigo-600');
+            });
+            btn.classList.remove('bg-indigo-100', 'text-indigo-600');
+            btn.classList.add('bg-indigo-600', 'text-white');
+            
+            currentMode = btn.dataset.mode;
+            document.getElementById('customSettings').classList.toggle('hidden', currentMode !== 'custom');
+            
+            if (currentMode === 'custom') {
+                modes.custom.study = parseInt(document.getElementById('customStudyDuration').value);
+                modes.custom.break = parseInt(document.getElementById('customBreakDuration').value);
+            }
+            
+            timeLeft = modes[currentMode].study * 60;
+            updateTimer(timeLeft);
+        });
+    });
+
+    // Custom duration inputs
+    document.getElementById('customStudyDuration').addEventListener('change', (e) => {
+        modes.custom.study = parseInt(e.target.value);
+        if (currentMode === 'custom') {
+            timeLeft = modes.custom.study * 60;
+            updateTimer(timeLeft);
+        }
+    });
+
+    document.getElementById('customBreakDuration').addEventListener('change', (e) => {
+        modes.custom.break = parseInt(e.target.value);
+    });
+
+    // Load achievements
+    async function loadAchievements() {
+        const response = await fetch('/api/achievements');
+        const achievements = await response.json();
+        const container = document.getElementById('achievements');
+        container.innerHTML = achievements.map(achievement => `
+            <div class="bg-gray-50 p-4 rounded-lg ${achievement.earned ? 'border-2 border-green-500' : ''}">
+                <img src="/static/images/${achievement.badge_image}" alt="${achievement.name}" class="w-12 h-12 mb-2">
+                <h3 class="font-semibold">${achievement.name}</h3>
+                <p class="text-sm text-gray-600">${achievement.description}</p>
+            </div>
+        `).join('');
+    }
+
+    // Load study groups
+    async function loadStudyGroups() {
+        const response = await fetch('/api/study-groups');
+        const groups = await response.json();
+        const container = document.getElementById('studyGroups');
+        container.innerHTML = groups.map(group => `
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="font-semibold">${group.name}</h3>
+                <p class="text-sm text-gray-600">${group.member_count} members</p>
+                <button class="mt-2 bg-indigo-100 text-indigo-600 px-3 py-1 rounded text-sm">
+                    Join Group
+                </button>
+            </div>
+        `).join('');
+    }
+
+    // Create study group
+    document.getElementById('createGroupBtn').addEventListener('click', async () => {
+        const groupName = prompt('Enter group name:');
+        if (groupName) {
+            await fetch('/api/study-groups', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: groupName })
+            });
+            loadStudyGroups();
+        }
+    });
+
+    // Dismiss notification
+    document.getElementById('dismissNotification').addEventListener('click', () => {
+        document.getElementById('notification').classList.remove('show');
+    });
+
+    // Initial loads
+    loadAchievements();
+    loadStudyGroups();
+</script>
+{% endblock %}
