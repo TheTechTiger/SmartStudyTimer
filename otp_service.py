@@ -25,6 +25,7 @@ def store_otp(email, otp):
     
     conn.commit()
     conn.close()
+    return True
 
 def verify_otp(email, otp):
     """Verify if OTP is valid and not expired"""

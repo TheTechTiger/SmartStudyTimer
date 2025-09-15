@@ -139,6 +139,8 @@ async function joinGroup(groupId, buttonElement) {
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
         // Use POST method for logout
+        window.location.href = '/logout';
+        return;
         fetch('/logout', {
             method: 'POST',
             headers: {

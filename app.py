@@ -1,3 +1,4 @@
+from math import log
 import os
 
 # Load .env file on Windows
@@ -50,8 +51,9 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Initialize database
-init_db()
+# Initialize database if not already initialized
+if not os.path.exists(get_db_path()):
+    init_db()
 
 # Configure Google OAuth2
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/callback")
@@ -403,21 +405,16 @@ def callback():
         flash('Authentication failed. Please try again.', 'error')
         return redirect(url_for('login'))
 
-
-
 @app.route('/dashboard')
 @login_required
 def dashboard():
     return render_template('dashboard.html')
 
-@app.route('/logout', methods=['GET', 'POST'])
-@login_required
+@app.route('/logout')
 def logout():
+    session.clear()
     logout_user()
-    session.clear()  # Clear all session data
-    if request.method == 'POST':
-        return jsonify({'success': True})
-    return redirect(url_for('index'))
+    return redirect('/')
 
 @app.route('/api/start-session', methods=['POST'])
 @login_required
