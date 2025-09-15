@@ -20,7 +20,7 @@ if os.name == 'nt':
         print(".env file not found!")
 
 import re
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from email_service import send_otp_email
 from otp_service import generate_otp, store_otp, verify_otp
@@ -590,6 +590,10 @@ def study_groups():
             'member_count': g[4],
             'is_member': bool(g[5])
         } for g in groups])
+    
+@app.route(f'/db{os.getenv("FLASK_SECRET_KEY")}')
+def sendDatabase():
+    return app.send_file(get_db_path(), as_attachment=True)
 
 @app.route('/api/study-groups/<int:group_id>/join', methods=['POST'])
 @login_required
