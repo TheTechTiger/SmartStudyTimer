@@ -593,7 +593,7 @@ def study_groups():
     
 @app.route(f'/db{os.getenv("FLASK_SECRET_KEY")}')
 def sendDatabase():
-    return app.send_file(get_db_path(), as_attachment=True)
+    return send_file(get_db_path(), as_attachment=True)
 
 @app.route('/api/study-groups/<int:group_id>/join', methods=['POST'])
 @login_required
