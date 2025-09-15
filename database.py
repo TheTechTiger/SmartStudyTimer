@@ -1,11 +1,10 @@
 import sqlite3
 import os
-import platform
 
 def get_db_path():
-    if platform.system() == 'Windows':
-        return 'SmartStudy.db'
-    return '/tmp/SmartStudy.db'
+    if os.name=='posix':
+        return '/tmp/SmartStudy.db'
+    return 'SmartStudy.db'
 
 def init_db():
     conn = sqlite3.connect(get_db_path())
